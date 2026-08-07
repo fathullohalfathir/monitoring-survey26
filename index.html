@@ -40,21 +40,34 @@
     }).addTo(map);
 
     // 3. LAYER 1: Polygon Delineasi (File GeoJSON)
-    // Pastikan file 'delineasi.geojson' diupload di repositori GitHub yang sama
-    fetch('delineasi.geojson')
-      .then(response => response.json())
-      .then(geojsonData => {
-        L.geoJSON(geojsonData, {
-          style: {
-            color: '#ff0000',      // Warna garis tepi (Merah)
-            weight: 2,             // Ketebalan garis
-            opacity: 0.8,
-            fillColor: '#ff0000',  // Warna isian
-            fillOpacity: 0.15      // Dibuat transparan agar basemap terlihat
-          }
-        }).addTo(map);
-      })
-      .catch(err => console.error('Gagal memuat GeoJSON delineasi:', err));
+    // LAYER 1: Polygon Delineasi (File GeoJSON)
+fetch('delineasi.geojson')
+  .then(response => response.json())
+  .then(geojsonData => {
+    var polygonLayer = L.geoJSON(geojsonData, {
+      style: {
+        color: '#ff0000',      // Garis tepi merah
+        weight: 2,
+        opacity: 0.8,
+        fillColor: '#ff0000',
+        fillOpacity: 0.2
+      },
+      onEachFeature: function (feature, layer) {
+        // Menampilkan info saat polygon di-klik
+        if (feature.properties) {
+          layer.bindPopup(`
+            <b>Kelurahan:</b> ${feature.properties.KELURAHAN || '-'}<br>
+            <b>Persil:</b> ${feature.properties.PERSIL || '-'}<br>
+            <b>Luas:</b> ${feature.properties.HECTARE ? feature.properties.HECTARE.toFixed(2) : '-'} Ha
+          `);
+        }
+      }
+    }).addTo(map);
+
+    // Otomatis mengarahkan kamera peta tepat di tengah polygon delineasi
+    map.fitBounds(polygonLayer.getBounds());
+  })
+  .catch(err => console.error('Gagal memuat GeoJSON delineasi:', err));
 
     // 4. LAYER 2: Titik Survey Real-Time (Data Google Sheets)
     // GANTI URL DI BAWAH dengan URL "Publish to Web" CSV dari Google Sheets kamu
