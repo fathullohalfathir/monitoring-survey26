@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peta Monitoring Survey</title>
+  
+  <!-- CSS Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    /* Menghilangkan margin browser agar peta full screen di Looker Studio */
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <!-- JS Leaflet & PapaParse (Pembersih/Reader CSV) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <script>
+    // 1. Inisialisasi Peta (Set titik tengah & zoom awal)
+    var map = L.map('map').setView([-7.15, 109.13], 12); // Ganti dengan Lat, Long area kamu
+
+    // 2. Base Layer (Basemap OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // 3. LAYER 1: Polygon Delineasi (File GeoJSON)
+    // Pastikan file 'delineasi.geojson' diupload di repositori GitHub yang sama
+    fetch('delineasi.geojson')
+      .then(response => response.json())
+      .then(geojsonData => {
+        L.geoJSON(geojsonData, {
+          style: {
+            color: '#ff0000',      // Warna garis tepi (Merah)
+            weight: 2,             // Ketebalan garis
+            opacity: 0.8,
+            fillColor: '#ff0000',  // Warna isian
+            fillOpacity: 0.15      // Dibuat transparan agar basemap terlihat
+          }
+        }).addTo(map);
+      })
+      .catch(err => console.error('Gagal memuat GeoJSON delineasi:', err));
+
+    // 4. LAYER 2: Titik Survey Real-Time (Data Google Sheets)
+    // GANTI URL DI BAWAH dengan URL "Publish to Web" CSV dari Google Sheets kamu
+    const sheetCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1v.../pub?output=csv';
+
+    Papa.parse(sheetCsvUrl, {
+      download: true,
+      header: true,
+      complete: function(results) {
+        let data = results.data;
+        
+        data.forEach(function(row) {
+          // Sesuaikan nama header kolom 'latitude' dan 'longitude' di Google Sheets kamu
+          let lat = parseFloat(row.latitude || row.lat || row.Latitude);
+          let lng = parseFloat(row.longitude || row.long || row.Longitude);
+          
+          if (!isNaN(lat) && !isNaN(lng)) {
+            // Membuat Circle Marker untuk setiap titik survey
+            let marker = L.circleMarker([lat, lng], {
+              radius: 6,
+              fillColor: "#0078ff", // Warna biru untuk titik survey
+              color: "#ffffff",     // Garis tepi putih
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            }).addTo(map);
+
+            // Pop-up saat titik di-klik (sesuaikan header kolom Google Sheets)
+            let popupContent = `
+              <b>Surveyor:</b> ${row.nama_surveyor || '-'} <br>
+              <b>Waktu:</b> ${row.timestamp || '-'} <br>
+              <b>Catatan:</b> ${row.keterangan || '-'}
+            `;
+            marker.bindPopup(popupContent);
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
