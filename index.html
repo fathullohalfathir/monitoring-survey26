@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   
   <style>
-    /* Menghilangkan margin browser agar peta full screen di Looker Studio */
     html, body {
       height: 100%;
       margin: 0;
@@ -19,58 +18,86 @@
       height: 100vh;
       width: 100vw;
     }
+    /* Box Indikator Status untuk Cek Error Langsung di Layar */
+    #status-box {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-family: sans-serif;
+      font-size: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      max-width: 280px;
+    }
   </style>
 </head>
 <body>
 
+  <div id="status-box">
+    <b>Status Peta:</b>
+    <div id="status-geojson">GeoJSON: ⏳ Memuat...</div>
+    <div id="status-csv">CSV Survey: ⏳ Memuat...</div>
+  </div>
+
   <div id="map"></div>
 
-  <!-- JS Leaflet & PapaParse (Pembersih/Reader CSV) -->
+  <!-- JS Leaflet & PapaParse -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <script>
-    // 1. Inisialisasi Peta (Set titik tengah & zoom awal)
-    var map = L.map('map').setView([-6.430054, 106.802656], 14); // Ganti dengan Lat, Long area kamu
+    // 1. Inisialisasi Peta
+    var map = L.map('map').setView([-6.418, 106.790], 14);
 
-    // 2. Base Layer (Basemap OpenStreetMap)
+    // 2. Base Layer (OpenStreetMap)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
     // 3. LAYER 1: Polygon Delineasi (File GeoJSON)
-    // LAYER 1: Polygon Delineasi (File GeoJSON)
-fetch('delineasi.geojson')
-  .then(response => response.json())
-  .then(geojsonData => {
-    var polygonLayer = L.geoJSON(geojsonData, {
-      style: {
-        color: '#ff0000',      // Garis tepi merah
-        weight: 2,
-        opacity: 0.8,
-        fillColor: '#ff0000',
-        fillOpacity: 0.2
-      },
-      onEachFeature: function (feature, layer) {
-        // Menampilkan info saat polygon di-klik
-        if (feature.properties) {
-          layer.bindPopup(`
-            <b>Kelurahan:</b> ${feature.properties.KELURAHAN || '-'}<br>
-            <b>Persil:</b> ${feature.properties.PERSIL || '-'}<br>
-            <b>Luas:</b> ${feature.properties.HECTARE ? feature.properties.HECTARE.toFixed(2) : '-'} Ha
-          `);
+    fetch('delineasi.geojson')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('File delineasi.geojson tidak ditemukan (HTTP ' + response.status + ')');
         }
-      }
-    }).addTo(map);
+        return response.json();
+      })
+      .then(geojsonData => {
+        var polygonLayer = L.geoJSON(geojsonData, {
+          style: {
+            color: '#ff0000',
+            weight: 2,
+            opacity: 0.8,
+            fillColor: '#ff0000',
+            fillOpacity: 0.2
+          },
+          onEachFeature: function (feature, layer) {
+            if (feature.properties) {
+              layer.bindPopup(`
+                <b>Kelurahan:</b> ${feature.properties.KELURAHAN || '-'}<br>
+                <b>Persil:</b> ${feature.properties.PERSIL || '-'}<br>
+                <b>Luas:</b> ${feature.properties.HECTARE ? feature.properties.HECTARE.toFixed(2) : '-'} Ha
+              `);
+            }
+          }
+        }).addTo(map);
 
-    // Otomatis mengarahkan kamera peta tepat di tengah polygon delineasi
-    map.fitBounds(polygonLayer.getBounds());
-  })
-  .catch(err => console.error('Gagal memuat GeoJSON delineasi:', err));
+        // Zoom otomatis ke area delineasi
+        map.fitBounds(polygonLayer.getBounds());
+        document.getElementById('status-geojson').innerHTML = 'GeoJSON: ✅ Berhasil Muncul';
+        document.getElementById('status-geojson').style.color = 'green';
+      })
+      .catch(err => {
+        console.error('Gagal GeoJSON:', err);
+        document.getElementById('status-geojson').innerHTML = 'GeoJSON: ❌ Error (' + err.message + ')';
+        document.getElementById('status-geojson').style.color = 'red';
+      });
 
     // 4. LAYER 2: Titik Survey Real-Time (Data Google Sheets)
-    // GANTI URL DI BAWAH dengan URL "Publish to Web" CSV dari Google Sheets kamu
     const sheetCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQb6szk-MCLGf2cZjV8og7gwpMDvahqV4vBRNhr_1SOgEgp_7I63omdRlqgA_kO_3LS3cXRJpTb3_dU/pub?gid=774611987&single=true&output=csv';
 
     Papa.parse(sheetCsvUrl, {
@@ -78,32 +105,43 @@ fetch('delineasi.geojson')
       header: true,
       complete: function(results) {
         let data = results.data;
+        let count = 0;
         
         data.forEach(function(row) {
-          // Sesuaikan nama header kolom 'latitude' dan 'longitude' di Google Sheets kamu
-          let lat = parseFloat(row.latitude || row.lat || row.Latitude);
-          let lng = parseFloat(row.longitude || row.long || row.Longitude);
+          let lat = parseFloat(row.latitude || row.lat || row.Latitude || row.LATITUDE);
+          let lng = parseFloat(row.longitude || row.long || row.Longitude || row.LONGITUDE);
           
           if (!isNaN(lat) && !isNaN(lng)) {
-            // Membuat Circle Marker untuk setiap titik survey
+            count++;
             let marker = L.circleMarker([lat, lng], {
               radius: 6,
-              fillColor: "#0078ff", // Warna biru untuk titik survey
-              color: "#ffffff",     // Garis tepi putih
+              fillColor: "#0078ff",
+              color: "#ffffff",
               weight: 1,
               opacity: 1,
               fillOpacity: 0.8
             }).addTo(map);
 
-            // Pop-up saat titik di-klik (sesuaikan header kolom Google Sheets)
             let popupContent = `
-              <b>Surveyor:</b> ${row.nama_surveyor || '-'} <br>
-              <b>Waktu:</b> ${row.timestamp || '-'} <br>
-              <b>Catatan:</b> ${row.keterangan || '-'}
+              <b>Surveyor:</b> ${row.nama_surveyor || row.surveyor || '-'} <br>
+              <b>Waktu:</b> ${row.timestamp || row.Waktu || '-'} <br>
+              <b>Catatan:</b> ${row.keterangan || row.Catatan || '-'}
             `;
             marker.bindPopup(popupContent);
           }
         });
+
+        if (count > 0) {
+          document.getElementById('status-csv').innerHTML = 'CSV Survey: ✅ ' + count + ' Titik Dimuat';
+          document.getElementById('status-csv').style.color = 'green';
+        } else {
+          document.getElementById('status-csv').innerHTML = 'CSV Survey: ⚠️ 0 Titik (Cek Header Kolom Lat/Long)';
+          document.getElementById('status-csv').style.color = 'orange';
+        }
+      },
+      error: function(err) {
+        document.getElementById('status-csv').innerHTML = 'CSV Survey: ❌ Gagal Ambil Data';
+        document.getElementById('status-csv').style.color = 'red';
       }
     });
   </script>
