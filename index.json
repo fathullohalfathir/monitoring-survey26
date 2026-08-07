@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "id": "surveyData",
+      "label": "Data Survey",
+      "elements": [
+        {
+          "id": "koordinat",
+          "label": "Kolom Koordinat (Lat, Lng)",
+          "type": "DIMENSION",
+          "options": { "min": 1, "max": 1 }
+        },
+        {
+          "id": "tooltip",
+          "label": "Informasi Tooltip / Detail",
+          "type": "DIMENSION",
+          "options": { "min": 0, "max": 5 }
+        }
+      ]
+    }
+  ]
+}
