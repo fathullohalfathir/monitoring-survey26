@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Leaflet Looker Component</title>
+  
+  <!-- CSS Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    html, body, #map {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <!-- JS Leaflet & Looker DSCC Library -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@google/dscc/dist/dscc.min.js"></script>
+
+  <script>
+    // 1. Inisialisasi Peta
+    var map = L.map('map').setView([-6.418, 106.790], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // 2. Memuat Layer GeoJSON Delineasi (Gunakan URL absolut GitHub Pages kamu)
+    // Contoh: https://username.github.io/repository-name/delineasi.geojson
+    fetch('https://raw.githubusercontent.com/USERNAME/REPO-NAME/main/delineasi.geojson')
+      .then(res => res.json())
+      .then(geojsonData => {
+        L.geoJSON(geojsonData, {
+          style: {
+            color: '#ff0000',
+            weight: 2,
+            opacity: 0.8,
+            fillColor: '#ff0000',
+            fillOpacity: 0.2
+          }
+        }).addTo(map);
+      })
+      .catch(err => console.error('Gagal memuat GeoJSON di Looker:', err));
+
+    // 3. Layer Group khusus Marker Survey dari Looker Studio
+    var markerGroup = L.featureGroup().addTo(map);
+
+    // 4. Fungsi Render Data saat Filter Looker Studio Berubah
+    function drawViz(data) {
+      markerGroup.clearLayers(); // Hapus marker lama
+
+      if (!data || !data.tables || !data.tables.DEFAULT) return;
+
+      let rows = data.tables.DEFAULT;
+      let validBounds = [];
+
+      rows.forEach(row => {
+        let coordText = row.koordinat ? row.koordinat[0] : null;
+
+        if (coordText) {
+          let parts = coordText.split(',');
+          if (parts.length >= 2) {
+            let lat = parseFloat(parts[0].trim());
+            let lng = parseFloat(parts[1].trim());
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+              let info = row.tooltip ? row.tooltip.join(' | ') : '';
+
+              let marker = L.circleMarker([lat, lng], {
+                radius: 6,
+                fillColor: "#0078ff",
+                color: "#ffffff",
+                weight: 1.5,
+                fillOpacity: 0.9
+              });
+
+              let popupContent = `<b>Koordinat:</b> ${lat}, ${lng}`;
+              if (info) popupContent += `<br><b>Detail:</b> ${info}`;
+              marker.bindPopup(popupContent);
+
+              markerGroup.addLayer(marker);
+              validBounds.push([lat, lng]);
+            }
+          }
+        }
+      });
+
+      // Auto Zoom/FitBounds ke titik hasil filter Looker
+      if (validBounds.length > 0) {
+        map.fitBounds(validBounds, { padding: [30, 30] });
+      }
+    }
+
+    // 5. Hubungkan dengan Stream Data Looker Studio
+    dscc.subscribeToData(drawViz, { transform: dscc.objectTransform });
+  </script>
+</body>
+</html>
