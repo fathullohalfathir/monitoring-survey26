@@ -98,6 +98,7 @@
       });
 
     // 4. LAYER 2: Titik Survey Real-Time (Data Google Sheets)
+   // 4. LAYER 2: Titik Survey Real-Time (Data Google Sheets)
     const sheetCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQb6szk-MCLGf2cZjV8og7gwpMDvahqV4vBRNhr_1SOgEgp_7I63omdRlqgA_kO_3LS3cXRJpTb3_dU/pub?gid=774611987&single=true&output=csv';
 
     Papa.parse(sheetCsvUrl, {
@@ -108,22 +109,40 @@
         let count = 0;
         
         data.forEach(function(row) {
-          let lat = parseFloat(row.latitude || row.lat || row.Latitude || row.LATITUDE);
-          let lng = parseFloat(row.longitude || row.long || row.Longitude || row.LONGITUDE);
+          let lat = NaN;
+          let lng = NaN;
+
+          // Cek jika ada kolom 'Koordinat' (Format: "Latitude, Longitude")
+          if (row.Koordinat || row.koordinat) {
+            let coordText = row.Koordinat || row.koordinat;
+            let parts = coordText.split(',');
+            if (parts.length >= 2) {
+              lat = parseFloat(parts[0].trim());
+              lng = parseFloat(parts[1].trim());
+            }
+          } 
+          // Alternatif jika masih ada baris yang pakai kolom terpisah
+          else {
+            lat = parseFloat(row.latitude || row.lat || row.Latitude || row.LATITUDE);
+            lng = parseFloat(row.longitude || row.long || row.Longitude || row.LONGITUDE);
+          }
           
           if (!isNaN(lat) && !isNaN(lng)) {
             count++;
+            // Membuat Circle Marker (Titik Biru) untuk setiap lokasi survey
             let marker = L.circleMarker([lat, lng], {
               radius: 6,
-              fillColor: "#0078ff",
-              color: "#ffffff",
-              weight: 1,
+              fillColor: "#0078ff", // Warna biru
+              color: "#ffffff",     // Garis tepi putih
+              weight: 1.5,
               opacity: 1,
-              fillOpacity: 0.8
+              fillOpacity: 0.9
             }).addTo(map);
 
+            // Pop-up detail survey saat titik di-klik
             let popupContent = `
-              <b>Surveyor:</b> ${row.nama_surveyor || row.surveyor || '-'} <br>
+              <b>Koordinat:</b> ${lat}, ${lng} <br>
+              <b>Surveyor:</b> ${row.nama_surveyor || row.surveyor || row.Nama || '-'} <br>
               <b>Waktu:</b> ${row.timestamp || row.Waktu || '-'} <br>
               <b>Catatan:</b> ${row.keterangan || row.Catatan || '-'}
             `;
@@ -135,15 +154,14 @@
           document.getElementById('status-csv').innerHTML = 'CSV Survey: ✅ ' + count + ' Titik Dimuat';
           document.getElementById('status-csv').style.color = 'green';
         } else {
-          document.getElementById('status-csv').innerHTML = 'CSV Survey: ⚠️ 0 Titik (Cek Header Kolom Lat/Long)';
+          document.getElementById('status-csv').innerHTML = 'CSV Survey: ⚠️ 0 Titik (Cek Teks Kolom Koordinat)';
           document.getElementById('status-csv').style.color = 'orange';
         }
       },
       error: function(err) {
-        document.getElementById('status-csv').innerHTML = 'CSV Survey: ❌ Gagal Ambil Data';
+        document.getElementById('status-csv').innerHTML = 'CSV Survey: ❌ Gagal Ambil Data CSV';
         document.getElementById('status-csv').style.color = 'red';
       }
-    });
-  </script>
+    });  </script>
 </body>
 </html>
