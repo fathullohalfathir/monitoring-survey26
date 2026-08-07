@@ -1,11 +1,15 @@
 {
-  "name": "Leaflet Interactive Survey Map",
-  "organization": "Monitoring Tim Survey",
-  "description": "Peta interaktif Leaflet yang terintegrasi dengan filter Looker Studio.",
+  "name": "Leaflet Monitoring Map",
+  "organization": "Survey Team",
+  "description": "Peta Leaflet interaktif yang terhubung langsung dengan filter Looker Studio.",
   "logoUrl": "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
-  "companyUrl": "https://github.com",
-  "supportUrl": "https://github.com",
-  "packageUrl": "https://github.com",
-  "termsOfServiceUrl": "https://github.com",
-  "devMode": true
+  "companyUrl": "https://github.com/fathullohalfathir/monitoring-survey26",
+  "supportUrl": "https://github.com/fathullohalfathir/monitoring-survey26",
+  "termsOfServiceUrl": "https://github.com/fathullohalfathir/monitoring-survey26",
+  "packageUrl": "https://github.com/fathullohalfathir/monitoring-survey26",
+  "devMode": true,
+  "resource": {
+    "js": "https://fathullohalfathir.github.io/monitoring-survey26/looker.html",
+    "config": "https://fathullohalfathir.github.io/monitoring-survey26/index.json"
+  }
 }
