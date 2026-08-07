@@ -112,9 +112,9 @@
           let lat = NaN;
           let lng = NaN;
 
-          // Cek jika ada kolom 'Koordinat' (Format: "Latitude, Longitude")
-          if (row.Koordinat || row.koordinat) {
-            let coordText = row.Koordinat || row.koordinat;
+          // Cek jika ada kolom '25. Koordinat' (Format: "Latitude, Longitude")
+          if (row.25. Koordinat || row.koordinat) {
+            let coordText = row.25. Koordinat || row.koordinat;
             let parts = coordText.split(',');
             if (parts.length >= 2) {
               lat = parseFloat(parts[0].trim());
